@@ -15,10 +15,13 @@ import cv2
 
 from extract_human_pose import HumanPoseExtractor
 
-physical_devices = tf.config.experimental.list_physical_devices("GPU")
-print(tf.config.experimental.list_physical_devices("GPU"))
-tf.config.experimental.set_memory_growth(physical_devices[0], True)
-print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices("GPU")))
+physical_devices = tf.config.list_physical_devices()
+print("All physical devices:", physical_devices)
+
+gpus = tf.config.list_physical_devices("GPU")
+print("GPU devices:", gpus)
+print("Num GPUs Available:", len(gpus))
+
 
 
 class ShotCounter:
@@ -391,6 +394,11 @@ if __name__ == "__main__":
 
     ret, frame = cap.read()
 
+    frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    video_fps = cap.get(cv2.CAP_PROP_FPS)
+    out_video = cv2.VideoWriter("output_video.mp4", cv2.VideoWriter_fourcc(*'mp4v'), video_fps, (frame_width, frame_height))
+
     human_pose_extractor = HumanPoseExtractor(frame.shape)
 
     NB_IMAGES = 30
@@ -461,16 +469,22 @@ if __name__ == "__main__":
         ):
             human_pose_extractor.roi.draw_shot(frame, shot_counter.last_shot)
 
-        # cv2.imshow("Frame", frame)
+        cv2.imshow("Frame", frame)
         human_pose_extractor.roi.update(human_pose_extractor.keypoints_pixels_frame)
 
-        cv2.imwrite(f"videos/image_{FRAME_ID:05d}.png", frame)
+        out_video.write(frame)
+        cv2.imshow("Frame", frame)
+        if cv2.waitKey(1) & 0xFF == 27:  # ESC key to stop
+            break
+
+        # cv2.imwrite(f"videos/image_{FRAME_ID:05d}.png", frame)
 
         # k = cv2.waitKey(0)
         # if k == 27:
         #    break
 
     cap.release()
+    out_video.release()
     cv2.destroyAllWindows()
 
     print(shot_counter.results)

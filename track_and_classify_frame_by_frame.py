@@ -12,14 +12,20 @@ import cv2
 import numpy as np
 import pandas as pd
 from tensorflow import keras
+import h5py
+import json
 
 from extract_human_pose import HumanPoseExtractor
 from track_and_classify_with_rnn import GT, draw_probs
 
-physical_devices = tf.config.experimental.list_physical_devices("GPU")
-print(tf.config.experimental.list_physical_devices("GPU"))
-tf.config.experimental.set_memory_growth(physical_devices[0], True)
-print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices("GPU")))
+
+# physical_devices = tf.config.list_physical_devices()
+# print("All physical devices:", physical_devices)
+
+# gpus = tf.config.list_physical_devices("GPU")
+# print("GPU devices:", gpus)
+# print("Num GPUs Available:", len(gpus))
+
 
 
 class ShotCounter:
@@ -203,8 +209,33 @@ if __name__ == "__main__":
     if args.evaluate is not None:
         gt = GT(args.evaluate)
 
-    m1 = keras.models.load_model(args.model)
+    
+    
 
+
+    def load_fixed_model(path):
+        with h5py.File(path, 'r') as f:
+            config = json.loads(f.attrs['model_config'])
+
+        # Remove unsupported keys recursively
+        def clean_config(obj):
+            if isinstance(obj, dict):
+                obj.pop("time_major", None)
+                for k in obj:
+                    clean_config(obj[k])
+            elif isinstance(obj, list):
+                for item in obj:
+                    clean_config(item)
+
+        clean_config(config)
+
+        model = keras.models.model_from_config(config)
+        model.load_weights(path)
+        return model
+
+    m1 = load_fixed_model(args.model)
+
+    
     cap = cv2.VideoCapture(args.video)
 
     assert cap.isOpened()

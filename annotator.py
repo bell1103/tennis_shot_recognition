@@ -12,9 +12,8 @@ from pathlib import Path
 import pandas as pd
 import cv2
 
-LEFT_ARROW_KEY = 81
-UP_ARROW_KEY = 82
-RIGHT_ARROW_KEY = 83
+LEFT_ARROW_KEY = 2
+RIGHT_ARROW_KEY = 3
 
 
 if __name__ == "__main__":
@@ -47,17 +46,13 @@ if __name__ == "__main__":
         k = cv2.waitKey(30)
 
         if k == RIGHT_ARROW_KEY:  # forehand
-            your_list.append({"Shot": "forehand", "FrameId": FRAME_ID})
+            your_list.append({"Shot": "forehand-volley", "FrameId": FRAME_ID})
             df = pd.DataFrame.from_records(your_list)
             print("Add forehand")
         elif k == LEFT_ARROW_KEY:  # backhand
-            your_list.append({"Shot": "backhand", "FrameId": FRAME_ID})
+            your_list.append({"Shot": "backhand-volley", "FrameId": FRAME_ID})
             df = pd.DataFrame.from_records(your_list)
             print("Add backhand")
-        elif k == UP_ARROW_KEY:  # serve
-            your_list.append({"Shot": "serve", "FrameId": FRAME_ID})
-            df = pd.DataFrame.from_records(your_list)
-            print("Add serve")
 
         # Press Q on keyboard to  exit
         if k == 27:

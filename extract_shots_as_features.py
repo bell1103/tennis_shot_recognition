@@ -42,6 +42,24 @@ columns = [
     "right_ankle_x",
 ]
 
+# MoveNet keypoint order (17 total):
+# 0: nose, 1: left_eye, 2: right_eye, 3: left_ear, 4: right_ear,
+# 5: left_shoulder, 6: right_shoulder, 7: left_elbow, 8: right_elbow,
+# 9: left_wrist, 10: right_wrist, 11: left_hip, 12: right_hip,
+# 13: left_knee, 14: right_knee, 15: left_ankle, 16: right_ankle
+# We keep: 0 (nose) + 5-16 (shoulders to ankles) = 13 keypoints
+KEEP_INDICES = [0, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+
+
+def extract_features(features):
+    """
+    Extract the 13 relevant keypoints (y, x) from the 17-keypoint array.
+    features shape: (17, 3) — [y, x, confidence]
+    Returns shape: (1, 26)
+    """
+    kept = features[KEEP_INDICES]  # shape (13, 3)
+    return kept[:, 0:2].reshape(1, 13 * 2)  # shape (1, 26)
+
 
 def draw_shot(frame, shot):
     """Draw shot name on frame (user-friendly)"""
@@ -132,25 +150,25 @@ if __name__ == "__main__":
                 FRAME_ID += 1
                 continue
 
-            features = features[features[:, 2] > 0][:, 0:2].reshape(1, 13 * 2)
+            features_row = extract_features(features)  # always (1, 26)
 
             shot_class = shots.iloc[CURRENT_ROW]["Shot"]
-            shots_features.append(features)
+            shots_features.append(features_row)
             draw_shot(frame, shot_class)
 
             if FRAME_ID - NB_IMAGES // 2 + 1 == shots.iloc[CURRENT_ROW]["FrameId"]:
-                # add assert?
                 shots_df = pd.DataFrame(
                     np.concatenate(shots_features, axis=0),
                     columns=columns,
                 )
                 shots_df["shot"] = np.full(NB_IMAGES, shot_class)
-                if shot_class == "forehand":
+
+                if shot_class == "forehand-volley":
                     outpath = Path(args.out).joinpath(
                         f"forehand_{IDX_FOREHAND:03d}.csv"
                     )
                     IDX_FOREHAND += 1
-                elif shot_class == "backhand":
+                elif shot_class == "backhand-volley":
                     outpath = Path(args.out).joinpath(
                         f"backhand_{IDX_BACKHAND:03d}.csv"
                     )
@@ -158,17 +176,22 @@ if __name__ == "__main__":
                 elif shot_class == "serve":
                     outpath = Path(args.out).joinpath(f"serve_{IDX_SERVE:03d}.csv")
                     IDX_SERVE += 1
+                else:
+                    print(f"Unknown shot class '{shot_class}', skipping save.")
+                    CURRENT_ROW += 1
+                    shots_features = []
+                    FRAME_ID += 1
+                    continue
 
                 shots_df.to_csv(outpath, index=False)
-
                 assert len(shots_df) == NB_IMAGES
-
                 print(f"saving {shot_class} to {outpath}")
 
                 CURRENT_ROW += 1
                 shots_features = []
 
-        elif (
+        # Guard against CURRENT_ROW == 0 to avoid iloc[-1] access
+        elif CURRENT_ROW > 0 and (
             shots.iloc[CURRENT_ROW]["FrameId"] - shots.iloc[CURRENT_ROW - 1]["FrameId"]
             > NB_IMAGES
         ):
@@ -181,9 +204,8 @@ if __name__ == "__main__":
                 < FRAME_ID
                 <= frame_id_between_shots + NB_IMAGES // 2
             ):
-
-                features = features[features[:, 2] > 0][:, 0:2].reshape(1, 13 * 2)
-                shots_features.append(features)
+                features_row = extract_features(features)  # always (1, 26)
+                shots_features.append(features_row)
                 draw_shot(frame, "neutral")
 
                 if FRAME_ID == frame_id_between_shots + NB_IMAGES // 2:
