@@ -1,0 +1,6 @@
+#!/Users/bellzhou/Documents/cs153/tennis_shot_recognition/tennis_env/bin/python
+import sys
+from debugpy.server.cli import main
+if __name__ == '__main__':
+    sys.argv[0] = sys.argv[0].removesuffix('.exe')
+    sys.exit(main())
